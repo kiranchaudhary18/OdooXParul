@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
-  const response = NextResponse.json({ success: true, message: "Logged out successfully." }, { status: 200 });
-  
-  const isSecure = req.nextUrl.protocol === 'https:' || req.headers.get("x-forwarded-proto") === "https";
+  const isSecure = process.env.NODE_ENV === "production";
 
-  // Clear the authentication cookie
-  response.cookies.set('auth-token', '', {
+  // Clear the authentication cookie using next/headers
+  const cookieStore = await cookies();
+  cookieStore.set('auth-token', '', {
     httpOnly: true,
     secure: isSecure,
     sameSite: 'lax',
@@ -14,5 +14,5 @@ export async function POST(req: NextRequest) {
     path: '/',
   });
 
-  return response;
+  return NextResponse.json({ success: true, message: "Logged out successfully." }, { status: 200 });
 }

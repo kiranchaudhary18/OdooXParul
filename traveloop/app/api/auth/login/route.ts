@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase, serializeDocument } from "@/lib/mongodb";
 import { comparePasswords, createJwtToken } from "@/lib/auth";
+import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,16 +29,11 @@ export async function POST(req: NextRequest) {
     const { passwordHash: removed, ...safeUser } = user as any;
     const token = createJwtToken({ userId: String(user._id), email });
 
-    // Set HTTP-only cookie for persistent session
-    const response = NextResponse.json(
-      { success: true, data: serializeDocument(safeUser), message: "Logged in successfully." }, 
-      { status: 200 }
-    );
+    const isSecure = process.env.NODE_ENV === "production";
 
-    const isSecure = req.nextUrl.protocol === 'https:' || req.headers.get("x-forwarded-proto") === "https";
-
-    // Set secure cookie with 30-day expiration
-    response.cookies.set('auth-token', token, {
+    // Set secure cookie using next/headers
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', token, {
       httpOnly: true,
       secure: isSecure,
       sameSite: 'lax',
@@ -45,7 +41,10 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    return response;
+    return NextResponse.json(
+      { success: true, data: serializeDocument(safeUser), message: "Logged in successfully." }, 
+      { status: 200 }
+    );
   } catch (error) {
     return NextResponse.json({ success: false, error: "Unable to login." }, { status: 500 });
   }
