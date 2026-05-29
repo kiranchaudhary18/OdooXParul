@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase, serializeDocument } from "@/lib/mongodb";
 import { createJwtToken, hashPassword } from "@/lib/auth";
-import { cookies } from "next/headers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,9 +50,12 @@ export async function POST(req: NextRequest) {
 
     const isSecure = process.env.NODE_ENV === "production";
 
-    // Set secure cookie using next/headers
-    const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    const response = NextResponse.json(
+      { success: true, data: serializeDocument(safeUser), message: "Account created successfully." }, 
+      { status: 200 }
+    );
+
+    response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: isSecure,
       sameSite: 'lax',
@@ -61,10 +63,7 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    return NextResponse.json(
-      { success: true, data: serializeDocument(safeUser), message: "Account created successfully." }, 
-      { status: 200 }
-    );
+    return response;
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error?.message || "Unable to create account." }, { status: 500 });
   }
